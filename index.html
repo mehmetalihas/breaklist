@@ -121,7 +121,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getDatabase, ref, set, onValue, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-    // --- FIREBASE CONFIG ---
+    // --- FIREBASE YAPILANDIRMASI ---
     const firebaseConfig = {
       apiKey: "AIzaSyCLoI8T_b6PUSUIYVZqhlqs-s2MG3YksLc",
       authDomain: "breaklist-ce965.firebaseapp.com",
@@ -137,13 +137,12 @@
     const db = getDatabase(app);
     const dbRef = ref(db, 'barTeam_Data');
 
-    // --- GLOBAL DEĞİŞKENLER ---
+    // --- GLOBAL DURUM ---
     window.isAdmin = false;
     window.currentTab = 'opening';
     window.currentPos = { row: 0, col: 0 };
     window.totalCols = 0;
     
-    // Uygulama verilerini tutan ana obje
     window.appState = {
         adminPass: 'mali007',
         database: [],
@@ -152,30 +151,39 @@
         activeStaffOnTable: []
     };
 
-    // --- FIREBASE VERİ ÇEKME ---
+    // --- FIREBASE VERİ DİNLEME ---
     onValue(dbRef, (snapshot) => {
         const data = snapshot.val();
         if (data) {
-            window.appState = data;
-            // Eksik olabilecek dizileri kontrol et
+            window.appState = {
+                ...window.appState,
+                ...data
+            };
+            // Eksik verileri varsayılanlarla tamamla
             if (!window.appState.activeStaffOnTable) window.appState.activeStaffOnTable = [];
             if (!window.appState.breakStates) window.appState.breakStates = {};
+            if (!window.appState.database) window.appState.database = [];
             
-            renderBreaklist();
-            renderAreaButtons();
-            if(!document.getElementById('editorView').classList.contains('hidden')) renderEditor();
+            refreshUI();
         } else {
-            // İlk Kurulum (Veritabanı boşsa)
-            const initialStaffNames = ["TÜLAY BALTACI", "HİLAL DOĞAN", "KÜBRA İNAÇ", "CEREN ESİRGEN", "REENA GURUNG", "GAYE SABIRLI", "BÜŞRA KEÇECİ", "SULTAN DALMIŞ", "SEHER BEYAZGÜL", "MELİKE ÜN", "SEREN GÜLTEKİN", "DEFNE YÜCEL", "HANİFE AKAR", "ROJDA NUR İLİŞ", "MELİKE BAYAN", "ÖMER YILMAZ", "AKIN KESKİN", "ONUR ARICIOĞLU", "NADEEM AKHTAR", "NOMAN TABASSAM", "KEMAL ÖZGÜR ÇAN", "HÜSEYİN LAÇİN", "LÜTFÜ KAŞKA", "MEHMET CAN POLAT", "MAHMUT FAKIOĞLU", "ŞEVGEL SAKLI", "MEHMET KIRIK", "VEYSEL AZAD SEÇKİN", "MEHMET KILIÇ", "MEHMET KARAKURT", "ŞAHİN ÖZEL", "BURAK YÜKÜM", "SERTAN ENDER", "OKAN DEMİRCİ", "ERDAL İZDEŞ", "EMİR ERYAZĞAN", "MEHMET EMİN AKBULUT", "BATUHAN ÇEVİK", "HALİT ARAS", "ALİ DURMAZ", "MUHAMMET ENES ÖZTÜRK", "MEHMET ALİ BİLİR", "DOĞUHAN ASLAN", "HASAN TUNCER", "CUMA ÖZBEK", "YUSUF AYDIN", "AHMET ESEN", "MUHAMMED UÇAR", "HÜSEYİN BATUHAN NERGİZ", "BURAK PİLEVNE", "YUSUF BEHZAT DOĞAN", "ÖZGÜR GÜLEN", "ÖMER CEM AKKERMAN", "EMİN REYHANİ"];
-            window.appState.database = initialStaffNames.map(name => ({ name, shifts: ["","","","","","",""] }));
+            // İlk kurulum verileri (Veritabanı boşsa)
+            const initialStaff = ["TÜLAY BALTACI", "HİLAL DOĞAN", "KÜBRA İNAÇ", "CEREN ESİRGEN", "REENA GURUNG", "GAYE SABIRLI", "BÜŞRA KEÇECİ", "SULTAN DALMIŞ", "SEHER BEYAZGÜL", "MELİKE ÜN", "SEREN GÜLTEKİN", "DEFNE YÜCEL", "HANİFE AKAR", "ROJDA NUR İLİŞ", "MELİKE BAYAN", "ÖMER YILMAZ", "AKIN KESKİN", "ONUR ARICIOĞLU", "NADEEM AKHTAR", "NOMAN TABASSAM", "KEMAL ÖZGÜR ÇAN", "HÜSEYİN LAÇİN", "LÜTFÜ KAŞKA", "MEHMET CAN POLAT", "MAHMUT FAKIOĞLU", "ŞEVGEL SAKLI", "MEHMET KIRIK", "VEYSEL AZAD SEÇKİN", "MEHMET KILIÇ", "MEHMET KARAKURT", "ŞAHİN ÖZEL", "BURAK YÜKÜM", "SERTAN ENDER", "OKAN DEMİRCİ", "ERDAL İZDEŞ", "EMİR ERYAZĞAN", "MEHMET EMİN AKBULUT", "BATUHAN ÇEVİK", "HALİT ARAS", "ALİ DURMAZ", "MUHAMMET ENES ÖZTÜRK", "MEHMET ALİ BİLİR", "DOĞUHAN ASLAN", "HASAN TUNCER", "CUMA ÖZBEK", "YUSUF AYDIN", "AHMET ESEN", "MUHAMMED UÇAR", "HÜSEYİN BATUHAN NERGİZ", "BURAK PİLEVNE", "YUSUF BEHZAT DOĞAN", "ÖZGÜR GÜLEN", "ÖMER CEM AKKERMAN", "EMİN REYHANİ"];
+            window.appState.database = initialStaff.map(name => ({ name, shifts: ["","","","","","",""] }));
             syncWithCloud();
         }
     });
 
-    // Buluta veri gönderme
-    window.syncWithCloud = () => set(dbRef, window.appState);
+    function refreshUI() {
+        renderBreaklist();
+        renderAreaButtons();
+        if(!document.getElementById('editorView').classList.contains('hidden')) renderEditor();
+    }
 
-    // --- SİSTEM FONKSİYONLARI ---
+    window.syncWithCloud = () => {
+        set(dbRef, window.appState).catch(err => console.error("Firebase Sync Error:", err));
+    };
+
+    // --- FONKSİYONLAR ---
     window.promptLogin = () => {
         const p = prompt("Yönetici Şifresi:");
         if(p === window.appState.adminPass) {
@@ -184,7 +192,7 @@
             document.getElementById('loginBtn').style.display = 'none';
             document.getElementById('lockStatus').innerText = '🔓 YÖNETİCİ MODU';
             document.getElementById('lockStatus').classList.replace('text-red-500', 'text-green-500');
-            renderBreaklist(); renderAreaButtons();
+            refreshUI();
         } else if(p !== null) alert("Hatalı!");
     };
 
@@ -219,8 +227,8 @@
             let rowHtml = `<td class="sticky-col px-4 py-3 text-[12px] font-bold bg-white border-b flex justify-between items-center text-slate-700">${name} ${window.isAdmin ? `<button onclick="removeFromTable(${rIdx})" class="text-red-300 hover:text-red-500 text-lg">×</button>` : ''}</td>`;
             for(let cIdx = 0; cIdx < window.totalCols; cIdx++) {
                 const key = `${dayIdx}_${name}_${window.currentTab}_${cIdx}`;
-                const data = window.appState.breakStates[key] || { label: '', color: '#ffffff' };
-                rowHtml += `<td class="p-1 border-b border-slate-50"><div id="cell-${rIdx}-${cIdx}" class="cell-unit ${window.isAdmin && window.currentPos.row===rIdx && window.currentPos.col===cIdx ? 'cell-selected':''}" style="background-color:${data.color}; color:${getContrast(data.color)}" onclick="selectCellByClick(${rIdx}, ${cIdx})">${data.label}</div></td>`;
+                const cellData = window.appState.breakStates[key] || { label: '', color: '#ffffff' };
+                rowHtml += `<td class="p-1 border-b border-slate-50"><div id="cell-${rIdx}-${cIdx}" class="cell-unit ${window.isAdmin && window.currentPos.row===rIdx && window.currentPos.col===cIdx ? 'cell-selected':''}" style="background-color:${cellData.color}; color:${getContrast(cellData.color)}" onclick="selectCellByClick(${rIdx}, ${cIdx})">${cellData.label}</div></td>`;
             }
             tbody.appendChild(Object.assign(document.createElement('tr'), { innerHTML: rowHtml }));
         });
@@ -251,6 +259,7 @@
     window.updateShift = (p, d, val) => { window.appState.database[p].shifts[d] = val.toUpperCase(); syncWithCloud(); };
     window.addToTable = (name) => { if(!window.appState.activeStaffOnTable.includes(name)) { window.appState.activeStaffOnTable.push(name); syncWithCloud(); } };
     window.removeFromTable = (idx) => { window.appState.activeStaffOnTable.splice(idx, 1); syncWithCloud(); };
+    
     window.setTab = (t) => { 
         window.currentTab = t; 
         document.getElementById('tabOpen').className = `px-5 py-1.5 rounded-lg font-bold text-xs ${t==='opening'?'bg-white shadow-sm text-blue-600':'text-slate-400'}`;
@@ -287,12 +296,13 @@
             window.appState.database = window.appState.database.filter(p => p.name !== name); 
             window.appState.activeStaffOnTable = window.appState.activeStaffOnTable.filter(n => n !== name); 
             syncWithCloud(); 
+            renderStaffSettings();
         } 
     };
 
     window.renderAreaSettings = () => { 
         const list = document.getElementById('areaSettingsList'); 
-        list.innerHTML = window.appState.areas.map((a, i) => `<div class="flex gap-2 bg-white p-2 rounded-xl border border-slate-100 items-center mb-1"><input type="color" value="${a.color}" onchange="appState.areas[${i}].color=this.value; syncWithCloud();" class="w-8 h-8 rounded border-0 bg-transparent"><input type="text" value="${a.name}" onchange="appState.areas[${i}].name=this.value.toUpperCase(); syncWithCloud();" class="flex-1 text-xs font-bold outline-none"><button onclick="appState.areas.splice(${i},1); syncWithCloud();" class="text-red-400 font-black px-2">×</button></div>`).join(''); 
+        list.innerHTML = window.appState.areas.map((a, i) => `<div class="flex gap-2 bg-white p-2 rounded-xl border border-slate-100 items-center mb-1"><input type="color" value="${a.color}" onchange="window.appState.areas[${i}].color=this.value; window.syncWithCloud();" class="w-8 h-8 rounded border-0 bg-transparent"><input type="text" value="${a.name}" onchange="window.appState.areas[${i}].name=this.value.toUpperCase(); window.syncWithCloud();" class="flex-1 text-xs font-bold outline-none"><button onclick="window.appState.areas.splice(${i},1); window.syncWithCloud(); window.renderAreaSettings();" class="text-red-400 font-black px-2">×</button></div>`).join(''); 
     };
 
     window.addNewArea = () => { 
@@ -301,6 +311,7 @@
         window.appState.areas.push({ name: input.value.toUpperCase(), color: '#3b82f6' }); 
         syncWithCloud(); 
         input.value = ''; 
+        renderAreaSettings();
     };
 
     window.updateStats = () => { 
@@ -332,11 +343,11 @@
 
     window.logout = () => { window.isAdmin = false; location.reload(); };
 
-    window.getContrast = (hex) => { 
+    function getContrast(hex) { 
         if(!hex || hex === '#ffffff') return '#475569'; 
         const r = parseInt(hex.substr(1,2),16), g = parseInt(hex.substr(3,2),16), b = parseInt(hex.substr(5,2),16); 
         return ((r*299)+(g*587)+(b*114))/1000 >= 128 ? '#1e293b' : 'white'; 
-    };
+    }
 
     window.clearDailyBreaks = () => {
         const dayIdx = document.getElementById('daySelect').value;
