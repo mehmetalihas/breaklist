@@ -118,10 +118,11 @@
 </div>
 
 <script type="module">
+    // Firebase SDK kütüphaneleri
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getDatabase, ref, set, onValue, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+    import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-    // --- FIREBASE YAPILANDIRMASI ---
+    // --- FIREBASE CONFIG ---
     const firebaseConfig = {
       apiKey: "AIzaSyCLoI8T_b6PUSUIYVZqhlqs-s2MG3YksLc",
       authDomain: "breaklist-ce965.firebaseapp.com",
@@ -129,20 +130,20 @@
       projectId: "breaklist-ce965",
       storageBucket: "breaklist-ce965.firebasestorage.app",
       messagingSenderId: "943693562951",
-      appId: "1:943693562951:web:76d1bad19bdefd62791d62",
-      measurementId: "G-S6VV4VL71G"
+      appId: "1:943693562951:web:76d1bad19bdefd62791d62"
     };
 
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
-    const dbRef = ref(db, 'barTeam_Data');
+    const dbRef = ref(db, 'barTeam_Data'); // Ana veri düğümü
 
-    // --- GLOBAL DURUM ---
+    // --- GLOBAL STATE ---
     window.isAdmin = false;
     window.currentTab = 'opening';
     window.currentPos = { row: 0, col: 0 };
     window.totalCols = 0;
     
+    // Varsayılan Uygulama Verileri (Cloud boşsa kullanılacak)
     window.appState = {
         adminPass: 'mali007',
         database: [],
@@ -151,39 +152,38 @@
         activeStaffOnTable: []
     };
 
-    // --- FIREBASE VERİ DİNLEME ---
+    // --- FIREBASE VERİ DİNLEME (REAL-TIME) ---
     onValue(dbRef, (snapshot) => {
         const data = snapshot.val();
         if (data) {
-            window.appState = {
-                ...window.appState,
-                ...data
-            };
-            // Eksik verileri varsayılanlarla tamamla
+            window.appState = data;
+            // Eksik olabilecek dizileri koru
             if (!window.appState.activeStaffOnTable) window.appState.activeStaffOnTable = [];
             if (!window.appState.breakStates) window.appState.breakStates = {};
             if (!window.appState.database) window.appState.database = [];
             
             refreshUI();
         } else {
-            // İlk kurulum verileri (Veritabanı boşsa)
+            // Veritabanı tamamen boşsa ilk kurulumu yap
             const initialStaff = ["TÜLAY BALTACI", "HİLAL DOĞAN", "KÜBRA İNAÇ", "CEREN ESİRGEN", "REENA GURUNG", "GAYE SABIRLI", "BÜŞRA KEÇECİ", "SULTAN DALMIŞ", "SEHER BEYAZGÜL", "MELİKE ÜN", "SEREN GÜLTEKİN", "DEFNE YÜCEL", "HANİFE AKAR", "ROJDA NUR İLİŞ", "MELİKE BAYAN", "ÖMER YILMAZ", "AKIN KESKİN", "ONUR ARICIOĞLU", "NADEEM AKHTAR", "NOMAN TABASSAM", "KEMAL ÖZGÜR ÇAN", "HÜSEYİN LAÇİN", "LÜTFÜ KAŞKA", "MEHMET CAN POLAT", "MAHMUT FAKIOĞLU", "ŞEVGEL SAKLI", "MEHMET KIRIK", "VEYSEL AZAD SEÇKİN", "MEHMET KILIÇ", "MEHMET KARAKURT", "ŞAHİN ÖZEL", "BURAK YÜKÜM", "SERTAN ENDER", "OKAN DEMİRCİ", "ERDAL İZDEŞ", "EMİR ERYAZĞAN", "MEHMET EMİN AKBULUT", "BATUHAN ÇEVİK", "HALİT ARAS", "ALİ DURMAZ", "MUHAMMET ENES ÖZTÜRK", "MEHMET ALİ BİLİR", "DOĞUHAN ASLAN", "HASAN TUNCER", "CUMA ÖZBEK", "YUSUF AYDIN", "AHMET ESEN", "MUHAMMED UÇAR", "HÜSEYİN BATUHAN NERGİZ", "BURAK PİLEVNE", "YUSUF BEHZAT DOĞAN", "ÖZGÜR GÜLEN", "ÖMER CEM AKKERMAN", "EMİN REYHANİ"];
             window.appState.database = initialStaff.map(name => ({ name, shifts: ["","","","","","",""] }));
-            syncWithCloud();
+            window.syncWithCloud();
         }
     });
 
+    // Arayüzü Güncelleme Fonksiyonu
     function refreshUI() {
         renderBreaklist();
         renderAreaButtons();
         if(!document.getElementById('editorView').classList.contains('hidden')) renderEditor();
     }
 
+    // Buluta veri gönderme (Her değişiklikte çağrılır)
     window.syncWithCloud = () => {
-        set(dbRef, window.appState).catch(err => console.error("Firebase Sync Error:", err));
+        set(dbRef, window.appState).catch(err => console.error("Firebase Sync Hatası:", err));
     };
 
-    // --- FONKSİYONLAR ---
+    // --- SİSTEM FONKSİYONLARI ---
     window.promptLogin = () => {
         const p = prompt("Yönetici Şifresi:");
         if(p === window.appState.adminPass) {
@@ -243,7 +243,7 @@
         const name = window.appState.activeStaffOnTable[window.currentPos.row]; 
         const key = `${dayIdx}_${name}_${window.currentTab}_${window.currentPos.col}`; 
         window.appState.breakStates[key] = { label, color }; 
-        syncWithCloud(); 
+        window.syncWithCloud(); 
     };
 
     window.renderEditor = () => {
@@ -256,9 +256,9 @@
         });
     };
 
-    window.updateShift = (p, d, val) => { window.appState.database[p].shifts[d] = val.toUpperCase(); syncWithCloud(); };
-    window.addToTable = (name) => { if(!window.appState.activeStaffOnTable.includes(name)) { window.appState.activeStaffOnTable.push(name); syncWithCloud(); } };
-    window.removeFromTable = (idx) => { window.appState.activeStaffOnTable.splice(idx, 1); syncWithCloud(); };
+    window.updateShift = (p, d, val) => { window.appState.database[p].shifts[d] = val.toUpperCase(); window.syncWithCloud(); };
+    window.addToTable = (name) => { if(!window.appState.activeStaffOnTable.includes(name)) { window.appState.activeStaffOnTable.push(name); window.syncWithCloud(); } };
+    window.removeFromTable = (idx) => { window.appState.activeStaffOnTable.splice(idx, 1); window.syncWithCloud(); };
     
     window.setTab = (t) => { 
         window.currentTab = t; 
@@ -287,7 +287,7 @@
         const input = document.getElementById('newStaffName'); 
         if(!input.value) return; 
         window.appState.database.push({ name: input.value.toUpperCase(), shifts: ["","","","","","",""] }); 
-        syncWithCloud(); 
+        window.syncWithCloud(); 
         input.value = ''; 
     };
 
@@ -295,23 +295,21 @@
         if(confirm("Silinsin mi?")) { 
             window.appState.database = window.appState.database.filter(p => p.name !== name); 
             window.appState.activeStaffOnTable = window.appState.activeStaffOnTable.filter(n => n !== name); 
-            syncWithCloud(); 
-            renderStaffSettings();
+            window.syncWithCloud(); 
         } 
     };
 
     window.renderAreaSettings = () => { 
         const list = document.getElementById('areaSettingsList'); 
-        list.innerHTML = window.appState.areas.map((a, i) => `<div class="flex gap-2 bg-white p-2 rounded-xl border border-slate-100 items-center mb-1"><input type="color" value="${a.color}" onchange="window.appState.areas[${i}].color=this.value; window.syncWithCloud();" class="w-8 h-8 rounded border-0 bg-transparent"><input type="text" value="${a.name}" onchange="window.appState.areas[${i}].name=this.value.toUpperCase(); window.syncWithCloud();" class="flex-1 text-xs font-bold outline-none"><button onclick="window.appState.areas.splice(${i},1); window.syncWithCloud(); window.renderAreaSettings();" class="text-red-400 font-black px-2">×</button></div>`).join(''); 
+        list.innerHTML = window.appState.areas.map((a, i) => `<div class="flex gap-2 bg-white p-2 rounded-xl border border-slate-100 items-center mb-1"><input type="color" value="${a.color}" onchange="window.appState.areas[${i}].color=this.value; window.syncWithCloud();" class="w-8 h-8 rounded border-0 bg-transparent"><input type="text" value="${a.name}" onchange="window.appState.areas[${i}].name=this.value.toUpperCase(); window.syncWithCloud();" class="flex-1 text-xs font-bold outline-none"><button onclick="window.appState.areas.splice(${i},1); window.syncWithCloud();" class="text-red-400 font-black px-2">×</button></div>`).join(''); 
     };
 
     window.addNewArea = () => { 
         const input = document.getElementById('newAreaName'); 
         if(!input.value) return; 
         window.appState.areas.push({ name: input.value.toUpperCase(), color: '#3b82f6' }); 
-        syncWithCloud(); 
+        window.syncWithCloud(); 
         input.value = ''; 
-        renderAreaSettings();
     };
 
     window.updateStats = () => { 
@@ -337,7 +335,7 @@
         const np = document.getElementById('newPass').value; 
         if(np.length < 3) return alert("Şifre çok kısa!"); 
         window.appState.adminPass = np; 
-        syncWithCloud(); 
+        window.syncWithCloud(); 
         alert("Şifre Güncellendi!"); 
     };
 
@@ -353,7 +351,7 @@
         const dayIdx = document.getElementById('daySelect').value;
         if (confirm(`Seçili güne ait TÜM mola verileri silinecek. Emin misiniz?`)) {
             Object.keys(window.appState.breakStates).forEach(key => { if (key.startsWith(`${dayIdx}_`)) delete window.appState.breakStates[key]; });
-            syncWithCloud();
+            window.syncWithCloud();
             alert("Temizlendi.");
         }
     };
