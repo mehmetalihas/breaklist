@@ -2,8 +2,9 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>BREAK LIST MANAGEMENT V1.0 CLOUD</title>
+    <title>BREAK LIST MANAGEMENT V1.1 CLOUD</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; }
@@ -29,7 +30,7 @@
     <header class="flex justify-between items-center bg-white p-5 rounded-2xl shadow-sm border border-slate-100 no-print">
         <div class="flex items-center gap-6">
             <div class="flex flex-col">
-                <h1 class="text-2xl font-black text-slate-900 tracking-tight leading-none uppercase">BREAK LİST <span class="text-blue-600">CLOUD V1.0</span></h1>
+                <h1 class="text-2xl font-black text-slate-900 tracking-tight leading-none uppercase">BREAK LİST <span class="text-blue-600">CLOUD</span></h1>
                 <span id="lockStatus" class="text-[10px] font-bold text-red-500 mt-1 uppercase tracking-widest">🔒 Kısıtlı Erişim</span>
             </div>
             <div class="flex bg-slate-100 p-1.5 rounded-xl admin-only">
@@ -83,34 +84,47 @@
     </main>
 
     <div id="settingsModal" class="modal">
-        <div class="bg-white p-8 rounded-[2rem] shadow-2xl w-[900px] max-h-[85vh] flex flex-col border">
+        <div class="bg-white p-8 rounded-[2rem] shadow-2xl w-[950px] max-h-[85vh] flex flex-col border">
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-2xl font-black text-slate-900 uppercase">Sistem Ayarları</h2>
                 <button onclick="closeSettings()" class="bg-slate-100 rounded-2xl w-10 h-10 font-bold hover:bg-red-50 hover:text-red-500 transition-colors">&times;</button>
             </div>
             <div class="flex gap-6 overflow-hidden">
                 <div class="flex-1 bg-slate-50 p-6 rounded-3xl border flex flex-col">
-                    <h3 class="font-bold text-xs text-slate-400 mb-4 uppercase tracking-widest">Personel Yönetimi</h3>
-                    <div class="flex gap-2 mb-4">
-                        <input id="newStaffName" type="text" placeholder="İsim SOYİSİM" class="flex-1 px-4 py-3 rounded-xl border text-sm outline-none focus:border-blue-500">
-                        <button onclick="addNewStaff()" class="bg-blue-600 text-white px-5 py-3 rounded-xl font-bold hover:bg-blue-700">+</button>
+                    <h3 class="font-bold text-xs text-slate-400 mb-4 uppercase tracking-widest">Personel & Excel</h3>
+                    <div class="flex gap-2 mb-2">
+                        <input id="newStaffName" type="text" placeholder="İsim SOYİSİM" class="flex-1 px-4 py-3 rounded-xl border text-sm outline-none">
+                        <button onclick="addNewStaff()" class="bg-blue-600 text-white px-5 py-3 rounded-xl font-bold">+</button>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block w-full text-center py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold text-[10px] cursor-pointer uppercase shadow-lg shadow-green-100">
+                            📥 Excel ile Shift Yükle
+                            <input type="file" id="excelInput" class="hidden" accept=".xlsx, .xls" onchange="handleExcelImport(event)">
+                        </label>
                     </div>
                     <div id="staffSettingsList" class="space-y-2 overflow-y-auto pr-2"></div>
                 </div>
+                
                 <div class="flex-1 bg-slate-50 p-6 rounded-3xl border flex flex-col">
                     <h3 class="font-bold text-xs text-slate-400 mb-4 uppercase tracking-widest">Bölge Tanımları</h3>
                     <div class="flex gap-2 mb-4">
                         <input id="newAreaName" type="text" placeholder="Bölge Adı" class="flex-1 px-4 py-3 rounded-xl border text-sm outline-none">
-                        <button onclick="addNewArea()" class="bg-blue-600 text-white px-5 py-3 rounded-xl font-bold hover:bg-blue-700">+</button>
+                        <button onclick="addNewArea()" class="bg-blue-600 text-white px-5 py-3 rounded-xl font-bold">+</button>
                     </div>
                     <div id="areaSettingsList" class="space-y-2 overflow-y-auto pr-2"></div>
                 </div>
+
                 <div class="w-64 bg-slate-900 p-6 rounded-3xl text-white flex flex-col">
-                    <h3 class="font-bold text-xs text-slate-400 mb-4 uppercase tracking-widest">Güvenlik</h3>
-                    <input id="newPass" type="password" placeholder="Yeni Şifre" class="w-full px-4 py-3 rounded-xl text-sm mb-2 bg-slate-800 border-0 outline-none text-white">
-                    <button onclick="changePassword()" class="bg-green-600 w-full py-3 rounded-xl font-bold text-[10px] mb-6 hover:bg-green-700">ŞİFREYİ GÜNCELLE</button>
-                    <button onclick="clearDailyBreaks()" class="w-full py-3 bg-orange-600 text-white rounded-xl font-bold text-[10px] mb-2 hover:bg-orange-700 uppercase">Günü Temizle</button>
-                    <button onclick="logout()" class="mt-auto w-full py-3 bg-red-500 rounded-xl font-bold text-[10px] hover:bg-red-600 uppercase">Oturumu Kapat</button>
+                    <h3 class="font-bold text-xs text-slate-400 mb-4 uppercase tracking-widest">Sistem Yönetimi</h3>
+                    <input id="newPass" type="password" placeholder="Yeni Şifre" class="w-full px-4 py-3 rounded-xl text-sm mb-2 bg-slate-800 border-0 text-white">
+                    <button onclick="changePassword()" class="bg-green-600 w-full py-3 rounded-xl font-bold text-[10px] mb-4 hover:bg-green-700">ŞİFRE GÜNCELLE</button>
+                    
+                    <div class="border-t border-slate-800 pt-4 mt-2 space-y-2">
+                        <button onclick="clearDailyBreaks()" class="w-full py-3 bg-orange-500 text-white rounded-xl font-bold text-[10px] uppercase hover:bg-orange-600">Günü Temizle</button>
+                        <button onclick="resetAllData()" class="w-full py-3 bg-red-600 text-white rounded-xl font-bold text-[10px] uppercase hover:bg-red-700 shadow-lg shadow-red-900/20">❌ TÜMÜNÜ SIFIRLA</button>
+                    </div>
+                    
+                    <button onclick="logout()" class="mt-auto w-full py-3 bg-slate-700 rounded-xl font-bold text-[10px] uppercase hover:bg-slate-600">Oturumu Kapat</button>
                 </div>
             </div>
         </div>
@@ -118,11 +132,9 @@
 </div>
 
 <script type="module">
-    // Firebase SDK kütüphaneleri
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-    // --- FIREBASE CONFIG ---
     const firebaseConfig = {
       apiKey: "AIzaSyCLoI8T_b6PUSUIYVZqhlqs-s2MG3YksLc",
       authDomain: "breaklist-ce965.firebaseapp.com",
@@ -135,16 +147,15 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
-    const dbRef = ref(db, 'barTeam_Data'); // Ana veri düğümü
+    const dbRef = ref(db, 'barTeam_Data');
 
-    // --- GLOBAL STATE ---
     window.isAdmin = false;
     window.currentTab = 'opening';
     window.currentPos = { row: 0, col: 0 };
     window.totalCols = 0;
     
-    // Varsayılan Uygulama Verileri (Cloud boşsa kullanılacak)
-    window.appState = {
+    // Uygulama ilk açıldığında boş bir şablon
+    const emptyState = {
         adminPass: 'mali007',
         database: [],
         areas: [{ name: 'BREAK', color: '#10b981' }, { name: 'JETON SAĞ', color: '#3b82f6' }],
@@ -152,40 +163,72 @@
         activeStaffOnTable: []
     };
 
-    // --- FIREBASE VERİ DİNLEME (REAL-TIME) ---
+    window.appState = JSON.parse(JSON.stringify(emptyState));
+
     onValue(dbRef, (snapshot) => {
         const data = snapshot.val();
         if (data) {
             window.appState = data;
-            // Eksik olabilecek dizileri koru
             if (!window.appState.activeStaffOnTable) window.appState.activeStaffOnTable = [];
             if (!window.appState.breakStates) window.appState.breakStates = {};
             if (!window.appState.database) window.appState.database = [];
-            
             refreshUI();
-        } else {
-            // Veritabanı tamamen boşsa ilk kurulumu yap
-            const initialStaff = ["TÜLAY BALTACI", "HİLAL DOĞAN", "KÜBRA İNAÇ", "CEREN ESİRGEN", "REENA GURUNG", "GAYE SABIRLI", "BÜŞRA KEÇECİ", "SULTAN DALMIŞ", "SEHER BEYAZGÜL", "MELİKE ÜN", "SEREN GÜLTEKİN", "DEFNE YÜCEL", "HANİFE AKAR", "ROJDA NUR İLİŞ", "MELİKE BAYAN", "ÖMER YILMAZ", "AKIN KESKİN", "ONUR ARICIOĞLU", "NADEEM AKHTAR", "NOMAN TABASSAM", "KEMAL ÖZGÜR ÇAN", "HÜSEYİN LAÇİN", "LÜTFÜ KAŞKA", "MEHMET CAN POLAT", "MAHMUT FAKIOĞLU", "ŞEVGEL SAKLI", "MEHMET KIRIK", "VEYSEL AZAD SEÇKİN", "MEHMET KILIÇ", "MEHMET KARAKURT", "ŞAHİN ÖZEL", "BURAK YÜKÜM", "SERTAN ENDER", "OKAN DEMİRCİ", "ERDAL İZDEŞ", "EMİR ERYAZĞAN", "MEHMET EMİN AKBULUT", "BATUHAN ÇEVİK", "HALİT ARAS", "ALİ DURMAZ", "MUHAMMET ENES ÖZTÜRK", "MEHMET ALİ BİLİR", "DOĞUHAN ASLAN", "HASAN TUNCER", "CUMA ÖZBEK", "YUSUF AYDIN", "AHMET ESEN", "MUHAMMED UÇAR", "HÜSEYİN BATUHAN NERGİZ", "BURAK PİLEVNE", "YUSUF BEHZAT DOĞAN", "ÖZGÜR GÜLEN", "ÖMER CEM AKKERMAN", "EMİN REYHANİ"];
-            window.appState.database = initialStaff.map(name => ({ name, shifts: ["","","","","","",""] }));
-            window.syncWithCloud();
         }
     });
 
-    // Arayüzü Güncelleme Fonksiyonu
+    window.syncWithCloud = () => set(dbRef, window.appState);
+
+    // TÜMÜNÜ SIFIRLA FONKSİYONU
+    window.resetAllData = () => {
+        const confirm1 = confirm("⚠️ DİKKAT: Tüm personeller, vardiyalar ve mola kayıtları tamamen silinecek!");
+        if(confirm1) {
+            const confirm2 = prompt("İşlemi onaylamak için 'SIFIRLA' yazın:");
+            if(confirm2 === "SIFIRLA") {
+                window.appState = JSON.parse(JSON.stringify(emptyState));
+                window.syncWithCloud();
+                alert("Sistem başarıyla fabrika ayarlarına döndürüldü.");
+                location.reload();
+            } else {
+                alert("Hatalı kelime, işlem iptal edildi.");
+            }
+        }
+    };
+
+    // EXCEL IMPORT
+    window.handleExcelImport = (e) => {
+        const file = e.target.files[0];
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+            const data = new Uint8Array(evt.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+            const newStaff = [];
+            json.forEach((row, idx) => {
+                if (idx === 0 || !row[0]) return;
+                newStaff.push({
+                    name: String(row[0]).toUpperCase().trim(),
+                    shifts: [String(row[1]||""),String(row[2]||""),String(row[3]||""),String(row[4]||""),String(row[5]||""),String(row[6]||""),String(row[7]||"")]
+                });
+            });
+            if(confirm(`${newStaff.length} personel eklensin mi?`)) {
+                window.appState.database = [...window.appState.database, ...newStaff];
+                window.syncWithCloud();
+            }
+            e.target.value = '';
+        };
+        reader.readAsArrayBuffer(file);
+    };
+
+    // --- TEMEL UI FONKSİYONLARI ---
     function refreshUI() {
         renderBreaklist();
         renderAreaButtons();
         if(!document.getElementById('editorView').classList.contains('hidden')) renderEditor();
     }
 
-    // Buluta veri gönderme (Her değişiklikte çağrılır)
-    window.syncWithCloud = () => {
-        set(dbRef, window.appState).catch(err => console.error("Firebase Sync Hatası:", err));
-    };
-
-    // --- SİSTEM FONKSİYONLARI ---
     window.promptLogin = () => {
-        const p = prompt("Yönetici Şifresi:");
+        const p = prompt("Şifre:");
         if(p === window.appState.adminPass) {
             window.isAdmin = true;
             document.body.classList.add('is-admin');
@@ -193,7 +236,7 @@
             document.getElementById('lockStatus').innerText = '🔓 YÖNETİCİ MODU';
             document.getElementById('lockStatus').classList.replace('text-red-500', 'text-green-500');
             refreshUI();
-        } else if(p !== null) alert("Hatalı!");
+        }
     };
 
     window.renderBreaklist = () => {
@@ -236,12 +279,10 @@
     };
 
     window.selectCellByClick = (r, c) => { if(window.isAdmin) { window.currentPos = { row: r, col: c }; renderBreaklist(); } };
-    
     window.applyArea = (label, color) => { 
-        if(!window.isAdmin) return; 
+        if(!window.isAdmin || !window.appState.activeStaffOnTable[window.currentPos.row]) return; 
         const dayIdx = document.getElementById('daySelect').value; 
-        const name = window.appState.activeStaffOnTable[window.currentPos.row]; 
-        const key = `${dayIdx}_${name}_${window.currentTab}_${window.currentPos.col}`; 
+        const key = `${dayIdx}_${window.appState.activeStaffOnTable[window.currentPos.row]}_${window.currentTab}_${window.currentPos.col}`; 
         window.appState.breakStates[key] = { label, color }; 
         window.syncWithCloud(); 
     };
@@ -259,59 +300,29 @@
     window.updateShift = (p, d, val) => { window.appState.database[p].shifts[d] = val.toUpperCase(); window.syncWithCloud(); };
     window.addToTable = (name) => { if(!window.appState.activeStaffOnTable.includes(name)) { window.appState.activeStaffOnTable.push(name); window.syncWithCloud(); } };
     window.removeFromTable = (idx) => { window.appState.activeStaffOnTable.splice(idx, 1); window.syncWithCloud(); };
-    
-    window.setTab = (t) => { 
-        window.currentTab = t; 
-        document.getElementById('tabOpen').className = `px-5 py-1.5 rounded-lg font-bold text-xs ${t==='opening'?'bg-white shadow-sm text-blue-600':'text-slate-400'}`;
-        document.getElementById('tabClose').className = `px-5 py-1.5 rounded-lg font-bold text-xs ${t==='closing'?'bg-white shadow-sm text-blue-600':'text-slate-400'} ml-1`;
-        renderBreaklist(); 
-    };
-
+    window.setTab = (t) => { window.currentTab = t; renderBreaklist(); };
     window.switchView = (view) => { 
         document.getElementById('editorView').classList.toggle('hidden', view !== 'editor'); 
         document.getElementById('breaklistView').classList.toggle('hidden', view !== 'breaklist'); 
         if(view==='editor') renderEditor(); else renderBreaklist(); 
-        document.getElementById('btnEditor').className = `px-5 py-2 rounded-lg text-xs font-bold ${view === 'editor' ? 'nav-active' : 'text-slate-500'}`; 
-        document.getElementById('btnBreaklist').className = `px-5 py-2 rounded-lg text-xs font-bold ${view === 'breaklist' ? 'nav-active' : 'text-slate-500'}`; 
     };
-
-    window.openSettings = () => { if(window.isAdmin) { document.getElementById('settingsModal').style.display = 'flex'; renderStaffSettings(); renderAreaSettings(); } };
+    window.openSettings = () => { document.getElementById('settingsModal').style.display = 'flex'; renderStaffSettings(); renderAreaSettings(); };
     window.closeSettings = () => { document.getElementById('settingsModal').style.display = 'none'; };
-    
     window.renderStaffSettings = () => { 
-        const list = document.getElementById('staffSettingsList'); 
-        list.innerHTML = window.appState.database.map((p) => `<div class="flex justify-between bg-white px-4 py-3 rounded-xl border border-slate-100 items-center mb-1"><span class="font-bold text-slate-700 text-xs">${p.name}</span><button onclick="removeStaff('${p.name}')" class="text-red-400 font-bold px-2 hover:text-red-600">SİL</button></div>`).join(''); 
+        document.getElementById('staffSettingsList').innerHTML = window.appState.database.map((p) => `<div class="flex justify-between bg-white px-4 py-3 rounded-xl border border-slate-100 items-center mb-1"><span class="font-bold text-slate-700 text-xs">${p.name}</span><button onclick="removeStaff('${p.name}')" class="text-red-400 font-bold px-2">SİL</button></div>`).join(''); 
     };
-
     window.addNewStaff = () => { 
-        const input = document.getElementById('newStaffName'); 
-        if(!input.value) return; 
-        window.appState.database.push({ name: input.value.toUpperCase(), shifts: ["","","","","","",""] }); 
-        window.syncWithCloud(); 
-        input.value = ''; 
+        const name = document.getElementById('newStaffName').value;
+        if(name) { window.appState.database.push({ name: name.toUpperCase(), shifts: ["","","","","","",""] }); window.syncWithCloud(); document.getElementById('newStaffName').value = ''; }
     };
-
-    window.removeStaff = (name) => { 
-        if(confirm("Silinsin mi?")) { 
-            window.appState.database = window.appState.database.filter(p => p.name !== name); 
-            window.appState.activeStaffOnTable = window.appState.activeStaffOnTable.filter(n => n !== name); 
-            window.syncWithCloud(); 
-        } 
-    };
-
+    window.removeStaff = (name) => { if(confirm("Silinsin mi?")) { window.appState.database = window.appState.database.filter(p => p.name !== name); window.syncWithCloud(); } };
     window.renderAreaSettings = () => { 
-        const list = document.getElementById('areaSettingsList'); 
-        list.innerHTML = window.appState.areas.map((a, i) => `<div class="flex gap-2 bg-white p-2 rounded-xl border border-slate-100 items-center mb-1"><input type="color" value="${a.color}" onchange="window.appState.areas[${i}].color=this.value; window.syncWithCloud();" class="w-8 h-8 rounded border-0 bg-transparent"><input type="text" value="${a.name}" onchange="window.appState.areas[${i}].name=this.value.toUpperCase(); window.syncWithCloud();" class="flex-1 text-xs font-bold outline-none"><button onclick="window.appState.areas.splice(${i},1); window.syncWithCloud();" class="text-red-400 font-black px-2">×</button></div>`).join(''); 
+        document.getElementById('areaSettingsList').innerHTML = window.appState.areas.map((a, i) => `<div class="flex gap-2 bg-white p-2 rounded-xl border border-slate-100 items-center mb-1"><input type="color" value="${a.color}" onchange="window.appState.areas[${i}].color=this.value; window.syncWithCloud();" class="w-8 h-8 rounded border-0"><input type="text" value="${a.name}" onchange="window.appState.areas[${i}].name=this.value.toUpperCase(); window.syncWithCloud();" class="flex-1 text-xs font-bold outline-none"><button onclick="window.appState.areas.splice(${i},1); window.syncWithCloud();" class="text-red-400 font-black px-2">×</button></div>`).join(''); 
     };
-
     window.addNewArea = () => { 
-        const input = document.getElementById('newAreaName'); 
-        if(!input.value) return; 
-        window.appState.areas.push({ name: input.value.toUpperCase(), color: '#3b82f6' }); 
-        window.syncWithCloud(); 
-        input.value = ''; 
+        const name = document.getElementById('newAreaName').value;
+        if(name) { window.appState.areas.push({ name: name.toUpperCase(), color: '#3b82f6' }); window.syncWithCloud(); document.getElementById('newAreaName').value = ''; }
     };
-
     window.updateStats = () => { 
         document.getElementById('totalOnTable').innerText = window.appState.activeStaffOnTable.length; 
         const container = document.getElementById('areaStatsContainer'); 
@@ -323,83 +334,45 @@
             const data = window.appState.breakStates[key]; 
             if(data && counts.hasOwnProperty(data.label)) counts[data.label]++; 
         }); 
-        container.innerHTML = window.appState.areas.map(a => `<div class="stats-badge border border-slate-100 px-3 py-1 rounded-xl text-[11px] font-bold" style="color: ${a.color}"><span class="opacity-70">${a.name}:</span> <span class="text-slate-900 ml-1">${counts[a.name]}</span></div>`).join(''); 
+        container.innerHTML = window.appState.areas.map(a => `<div class="stats-badge border border-slate-100 px-3 py-1 rounded-xl text-[11px] font-bold" style="color: ${a.color}">${a.name}: <span class="text-slate-900 ml-1">${counts[a.name]}</span></div>`).join(''); 
     };
-
     window.renderAreaButtons = () => { 
         const container = document.getElementById('areaButtons'); 
         container.innerHTML = window.appState.areas.map(a => `<button onclick="applyArea('${a.name}', '${a.color}')" class="px-6 py-3 rounded-xl text-white font-bold text-[10px] shadow-sm uppercase tracking-wider" style="background:${a.color}">${a.name}</button>`).join('') + `<button onclick="applyArea('', '#ffffff')" class="px-6 py-3 rounded-xl bg-slate-100 text-slate-400 font-bold text-[10px] ml-auto border uppercase">Temizle</button>`; 
     };
-
-    window.changePassword = () => { 
-        const np = document.getElementById('newPass').value; 
-        if(np.length < 3) return alert("Şifre çok kısa!"); 
-        window.appState.adminPass = np; 
-        window.syncWithCloud(); 
-        alert("Şifre Güncellendi!"); 
-    };
-
+    window.changePassword = () => { const np = document.getElementById('newPass').value; if(np.length >= 3) { window.appState.adminPass = np; window.syncWithCloud(); alert("Başarılı!"); } };
     window.logout = () => { window.isAdmin = false; location.reload(); };
-
-    function getContrast(hex) { 
-        if(!hex || hex === '#ffffff') return '#475569'; 
-        const r = parseInt(hex.substr(1,2),16), g = parseInt(hex.substr(3,2),16), b = parseInt(hex.substr(5,2),16); 
-        return ((r*299)+(g*587)+(b*114))/1000 >= 128 ? '#1e293b' : 'white'; 
-    }
-
+    function getContrast(hex) { if(!hex || hex === '#ffffff') return '#475569'; const r = parseInt(hex.substr(1,2),16), g = parseInt(hex.substr(3,2),16), b = parseInt(hex.substr(5,2),16); return ((r*299)+(g*587)+(b*114))/1000 >= 128 ? '#1e293b' : 'white'; }
     window.clearDailyBreaks = () => {
         const dayIdx = document.getElementById('daySelect').value;
-        if (confirm(`Seçili güne ait TÜM mola verileri silinecek. Emin misiniz?`)) {
+        if (confirm(`Bugünün mola verileri silinecek. Emin misiniz?`)) {
             Object.keys(window.appState.breakStates).forEach(key => { if (key.startsWith(`${dayIdx}_`)) delete window.appState.breakStates[key]; });
             window.syncWithCloud();
-            alert("Temizlendi.");
         }
     };
-
     window.handleShiftKeyShortcut = (e, pIdx, dIdx) => {
         const key = e.key.toLowerCase();
-        if (key === 'o') { e.preventDefault(); e.target.value = 'OFF'; window.updateShift(pIdx, dIdx, 'OFF'); }
-        else if (key === 'v') { e.preventDefault(); e.target.value = 'VAC'; window.updateShift(pIdx, dIdx, 'VAC'); }
-        else if (key === 'r') { e.preventDefault(); e.target.value = 'R'; window.updateShift(pIdx, dIdx, 'R'); }
+        if (key === 'o') { e.preventDefault(); window.updateShift(pIdx, dIdx, 'OFF'); }
+        else if (key === 'v') { e.preventDefault(); window.updateShift(pIdx, dIdx, 'VAC'); }
+        else if (key === 'r') { e.preventDefault(); window.updateShift(pIdx, dIdx, 'R'); }
     };
 
-    // --- DRAG TO SCROLL ---
+    // --- DRAG SCROLL ---
     const slider = document.getElementById('scrollContainer');
-    let isDown = false;
-    let startX, scrollLeft, startY, scrollTop;
-
-    slider.addEventListener('mousedown', (e) => {
-        isDown = true;
-        startX = e.pageX - slider.offsetLeft;
-        startY = e.pageY - slider.offsetTop;
-        scrollLeft = slider.scrollLeft;
-        scrollTop = slider.scrollTop;
-    });
+    let isDown = false; let startX, scrollLeft;
+    slider.addEventListener('mousedown', (e) => { isDown = true; startX = e.pageX - slider.offsetLeft; scrollLeft = slider.scrollLeft; });
     slider.addEventListener('mouseleave', () => isDown = false);
     slider.addEventListener('mouseup', () => isDown = false);
-    slider.addEventListener('mousemove', (e) => {
-        if (!isDown) return;
-        e.preventDefault();
-        const x = e.pageX - slider.offsetLeft;
-        const y = e.pageY - slider.offsetTop;
-        const walkX = (x - startX) * 2; 
-        const walkY = (y - startY) * 2;
-        slider.scrollLeft = scrollLeft - walkX;
-        slider.scrollTop = scrollTop - walkY;
-    });
+    slider.addEventListener('mousemove', (e) => { if (!isDown) return; e.preventDefault(); const x = e.pageX - slider.offsetLeft; const walkX = (x - startX) * 2; slider.scrollLeft = scrollLeft - walkX; });
 
     window.addEventListener('keydown', (e) => {
         if (!window.isAdmin || document.activeElement.tagName === 'INPUT') return;
         const { row, col } = window.currentPos;
-        const maxRow = window.appState.activeStaffOnTable.length - 1;
-        const maxCol = window.totalCols - 1;
-
-        if (e.key === 'ArrowUp') { e.preventDefault(); if (row > 0) selectCellByClick(row - 1, col); } 
-        else if (e.key === 'ArrowDown') { e.preventDefault(); if (row < maxRow) selectCellByClick(row + 1, col); } 
-        else if (e.key === 'ArrowLeft') { e.preventDefault(); if (col > 0) selectCellByClick(row, col - 1); } 
-        else if (e.key === 'ArrowRight') { e.preventDefault(); if (col < maxCol) selectCellByClick(row, col + 1); } 
+        if (e.key === 'ArrowUp' && row > 0) selectCellByClick(row - 1, col);
+        else if (e.key === 'ArrowDown' && row < window.appState.activeStaffOnTable.length - 1) selectCellByClick(row + 1, col);
+        else if (e.key === 'ArrowLeft' && col > 0) selectCellByClick(row, col - 1);
+        else if (e.key === 'ArrowRight' && col < window.totalCols - 1) selectCellByClick(row, col + 1);
     });
-
 </script>
 </body>
 </html>
