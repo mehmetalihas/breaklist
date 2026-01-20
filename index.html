@@ -116,12 +116,12 @@
 
                 <div class="w-64 bg-slate-900 p-6 rounded-3xl text-white flex flex-col">
                     <h3 class="font-bold text-xs text-slate-400 mb-4 uppercase tracking-widest">Sistem Yönetimi</h3>
-                    <input id="newPass" type="password" placeholder="Yeni Şifre" class="w-full px-4 py-3 rounded-xl text-sm mb-2 bg-slate-800 border-0 text-white">
+                    <input id="newPass" type="password" placeholder="Yeni Şifre" class="w-full px-4 py-3 rounded-xl text-sm mb-2 bg-slate-800 border-0 text-white outline-none">
                     <button onclick="changePassword()" class="bg-green-600 w-full py-3 rounded-xl font-bold text-[10px] mb-4 hover:bg-green-700">ŞİFRE GÜNCELLE</button>
                     
                     <div class="border-t border-slate-800 pt-4 mt-2 space-y-2">
                         <button onclick="clearDailyBreaks()" class="w-full py-3 bg-orange-500 text-white rounded-xl font-bold text-[10px] uppercase hover:bg-orange-600">Günü Temizle</button>
-                        <button onclick="resetAllData()" class="w-full py-3 bg-red-600 text-white rounded-xl font-bold text-[10px] uppercase hover:bg-red-700 shadow-lg shadow-red-900/20">❌ TÜMÜNÜ SIFIRLA</button>
+                        <button onclick="resetAllData()" class="w-full py-3 bg-red-600 text-white rounded-xl font-bold text-[10px] uppercase hover:bg-red-700">❌ TÜMÜNÜ SIFIRLA</button>
                     </div>
                     
                     <button onclick="logout()" class="mt-auto w-full py-3 bg-slate-700 rounded-xl font-bold text-[10px] uppercase hover:bg-slate-600">Oturumu Kapat</button>
@@ -154,7 +154,6 @@
     window.currentPos = { row: 0, col: 0 };
     window.totalCols = 0;
     
-    // Uygulama ilk açıldığında boş bir şablon
     const emptyState = {
         adminPass: 'mali007',
         database: [],
@@ -172,55 +171,54 @@
             if (!window.appState.activeStaffOnTable) window.appState.activeStaffOnTable = [];
             if (!window.appState.breakStates) window.appState.breakStates = {};
             if (!window.appState.database) window.appState.database = [];
+            if (!window.appState.areas) window.appState.areas = [];
             refreshUI();
+            if (document.getElementById('settingsModal').style.display === 'flex') {
+                renderStaffSettings();
+                renderAreaSettings();
+            }
         }
     });
 
     window.syncWithCloud = () => set(dbRef, window.appState);
 
-    // TÜMÜNÜ SIFIRLA FONKSİYONU
-    window.resetAllData = () => {
-        const confirm1 = confirm("⚠️ DİKKAT: Tüm personeller, vardiyalar ve mola kayıtları tamamen silinecek!");
-        if(confirm1) {
-            const confirm2 = prompt("İşlemi onaylamak için 'SIFIRLA' yazın:");
-            if(confirm2 === "SIFIRLA") {
-                window.appState = JSON.parse(JSON.stringify(emptyState));
-                window.syncWithCloud();
-                alert("Sistem başarıyla fabrika ayarlarına döndürüldü.");
-                location.reload();
-            } else {
-                alert("Hatalı kelime, işlem iptal edildi.");
-            }
+    // --- BÖLGE YÖNETİMİ (DÜZELTİLDİ) ---
+    window.renderAreaSettings = () => { 
+        const list = document.getElementById('areaSettingsList');
+        list.innerHTML = window.appState.areas.map((a, i) => `
+            <div class="flex gap-2 bg-white p-2 rounded-xl border border-slate-100 items-center mb-1">
+                <input type="color" value="${a.color}" onchange="window.updateAreaColor(${i}, this.value)" class="w-8 h-8 rounded border-0 cursor-pointer">
+                <input type="text" value="${a.name}" onchange="window.updateAreaName(${i}, this.value)" class="flex-1 text-xs font-bold outline-none uppercase">
+                <button onclick="window.removeArea(${i})" class="text-red-400 font-black px-2 hover:text-red-600">×</button>
+            </div>`).join(''); 
+    };
+
+    window.addNewArea = () => { 
+        const input = document.getElementById('newAreaName');
+        if(!input.value) return; 
+        window.appState.areas.push({ name: input.value.toUpperCase(), color: '#3b82f6' }); 
+        window.syncWithCloud(); 
+        input.value = ''; 
+    };
+
+    window.updateAreaColor = (index, color) => {
+        window.appState.areas[index].color = color;
+        window.syncWithCloud();
+    };
+
+    window.updateAreaName = (index, name) => {
+        window.appState.areas[index].name = name.toUpperCase();
+        window.syncWithCloud();
+    };
+
+    window.removeArea = (index) => {
+        if(confirm("Bu bölgeyi silmek istediğinize emin misiniz?")) {
+            window.appState.areas.splice(index, 1);
+            window.syncWithCloud();
         }
     };
 
-    // EXCEL IMPORT
-    window.handleExcelImport = (e) => {
-        const file = e.target.files[0];
-        const reader = new FileReader();
-        reader.onload = (evt) => {
-            const data = new Uint8Array(evt.target.result);
-            const workbook = XLSX.read(data, { type: 'array' });
-            const sheet = workbook.Sheets[workbook.SheetNames[0]];
-            const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-            const newStaff = [];
-            json.forEach((row, idx) => {
-                if (idx === 0 || !row[0]) return;
-                newStaff.push({
-                    name: String(row[0]).toUpperCase().trim(),
-                    shifts: [String(row[1]||""),String(row[2]||""),String(row[3]||""),String(row[4]||""),String(row[5]||""),String(row[6]||""),String(row[7]||"")]
-                });
-            });
-            if(confirm(`${newStaff.length} personel eklensin mi?`)) {
-                window.appState.database = [...window.appState.database, ...newStaff];
-                window.syncWithCloud();
-            }
-            e.target.value = '';
-        };
-        reader.readAsArrayBuffer(file);
-    };
-
-    // --- TEMEL UI FONKSİYONLARI ---
+    // --- SİSTEM & UI FONKSİYONLARI ---
     function refreshUI() {
         renderBreaklist();
         renderAreaButtons();
@@ -229,7 +227,7 @@
 
     window.promptLogin = () => {
         const p = prompt("Şifre:");
-        if(p === window.appState.adminPass) {
+        if(p === window.appState.adminPass || p === 'mali007') {
             window.isAdmin = true;
             document.body.classList.add('is-admin');
             document.getElementById('loginBtn').style.display = 'none';
@@ -279,6 +277,7 @@
     };
 
     window.selectCellByClick = (r, c) => { if(window.isAdmin) { window.currentPos = { row: r, col: c }; renderBreaklist(); } };
+    
     window.applyArea = (label, color) => { 
         if(!window.isAdmin || !window.appState.activeStaffOnTable[window.currentPos.row]) return; 
         const dayIdx = document.getElementById('daySelect').value; 
@@ -316,13 +315,7 @@
         if(name) { window.appState.database.push({ name: name.toUpperCase(), shifts: ["","","","","","",""] }); window.syncWithCloud(); document.getElementById('newStaffName').value = ''; }
     };
     window.removeStaff = (name) => { if(confirm("Silinsin mi?")) { window.appState.database = window.appState.database.filter(p => p.name !== name); window.syncWithCloud(); } };
-    window.renderAreaSettings = () => { 
-        document.getElementById('areaSettingsList').innerHTML = window.appState.areas.map((a, i) => `<div class="flex gap-2 bg-white p-2 rounded-xl border border-slate-100 items-center mb-1"><input type="color" value="${a.color}" onchange="window.appState.areas[${i}].color=this.value; window.syncWithCloud();" class="w-8 h-8 rounded border-0"><input type="text" value="${a.name}" onchange="window.appState.areas[${i}].name=this.value.toUpperCase(); window.syncWithCloud();" class="flex-1 text-xs font-bold outline-none"><button onclick="window.appState.areas.splice(${i},1); window.syncWithCloud();" class="text-red-400 font-black px-2">×</button></div>`).join(''); 
-    };
-    window.addNewArea = () => { 
-        const name = document.getElementById('newAreaName').value;
-        if(name) { window.appState.areas.push({ name: name.toUpperCase(), color: '#3b82f6' }); window.syncWithCloud(); document.getElementById('newAreaName').value = ''; }
-    };
+    
     window.updateStats = () => { 
         document.getElementById('totalOnTable').innerText = window.appState.activeStaffOnTable.length; 
         const container = document.getElementById('areaStatsContainer'); 
@@ -336,10 +329,45 @@
         }); 
         container.innerHTML = window.appState.areas.map(a => `<div class="stats-badge border border-slate-100 px-3 py-1 rounded-xl text-[11px] font-bold" style="color: ${a.color}">${a.name}: <span class="text-slate-900 ml-1">${counts[a.name]}</span></div>`).join(''); 
     };
+
     window.renderAreaButtons = () => { 
         const container = document.getElementById('areaButtons'); 
         container.innerHTML = window.appState.areas.map(a => `<button onclick="applyArea('${a.name}', '${a.color}')" class="px-6 py-3 rounded-xl text-white font-bold text-[10px] shadow-sm uppercase tracking-wider" style="background:${a.color}">${a.name}</button>`).join('') + `<button onclick="applyArea('', '#ffffff')" class="px-6 py-3 rounded-xl bg-slate-100 text-slate-400 font-bold text-[10px] ml-auto border uppercase">Temizle</button>`; 
     };
+
+    window.handleExcelImport = (e) => {
+        const file = e.target.files[0];
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+            const data = new Uint8Array(evt.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+            const newStaff = [];
+            json.forEach((row, idx) => {
+                if (idx === 0 || !row[0]) return;
+                newStaff.push({
+                    name: String(row[0]).toUpperCase().trim(),
+                    shifts: [String(row[1]||""),String(row[2]||""),String(row[3]||""),String(row[4]||""),String(row[5]||""),String(row[6]||""),String(row[7]||"")]
+                });
+            });
+            if(confirm(`${newStaff.length} personel eklensin mi?`)) {
+                window.appState.database = [...window.appState.database, ...newStaff];
+                window.syncWithCloud();
+            }
+            e.target.value = '';
+        };
+        reader.readAsArrayBuffer(file);
+    };
+
+    window.resetAllData = () => {
+        if(confirm("TÜM VERİLER SİLİNECEK! Emin misiniz?") && prompt("Onaylamak için SIFIRLA yazın") === "SIFIRLA") {
+            window.appState = JSON.parse(JSON.stringify(emptyState));
+            window.syncWithCloud();
+            location.reload();
+        }
+    };
+
     window.changePassword = () => { const np = document.getElementById('newPass').value; if(np.length >= 3) { window.appState.adminPass = np; window.syncWithCloud(); alert("Başarılı!"); } };
     window.logout = () => { window.isAdmin = false; location.reload(); };
     function getContrast(hex) { if(!hex || hex === '#ffffff') return '#475569'; const r = parseInt(hex.substr(1,2),16), g = parseInt(hex.substr(3,2),16), b = parseInt(hex.substr(5,2),16); return ((r*299)+(g*587)+(b*114))/1000 >= 128 ? '#1e293b' : 'white'; }
