@@ -1,537 +1,331 @@
 <!DOCTYPE html>
-
 <html lang="tr">
-
 <head>
-
     <meta charset="UTF-8">
-
     <title>BREAK LİST MANAGEMENT V1.0 Alpha</title>
-
     <script src="https://cdn.tailwindcss.com"></script>
-
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
-
     <style>
-
         body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; }
-
         ::-webkit-scrollbar { width: 6px; height: 6px; }
-
         ::-webkit-scrollbar-track { background: #f1f5f9; }
-
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-
         .main-table-container { flex: 1; height: calc(100vh - 260px); overflow: auto; border-radius: 12px; user-select: none; position: relative; cursor: grab; }
-
         .main-table-container:active { cursor: grabbing; }
-
         .sticky-col { position: sticky; left: 0; background-color: #ffffff !important; z-index: 40 !important; border-right: 2px solid #e2e8f0; min-width: 220px; box-shadow: 10px 0 15px -10px rgba(0,0,0,0.05); }
-
         .time-header-cell { min-width: 90px; padding: 12px 6px; font-size: 12px; font-weight: 800; color: #475569; background-color: #ffffff; border-bottom: 2px solid #e2e8f0; }
-
         .cell-unit { min-width: 90px; height: 44px; border: 1px solid #f1f5f9; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; border-radius: 8px; font-size: 11px; font-weight: 800; text-shadow: 0px 0px 1px rgba(0,0,0,0.1); outline: none; }
-
         .cell-selected { border: 3px solid #2563eb !important; background-color: #ffffff !important; color: #2563eb !important; transform: scale(1.05); z-index: 60; box-shadow: 0 0 15px rgba(37, 99, 235, 0.4); }
-
         .nav-active { background: #2563eb !important; color: white !important; }
-
         .admin-only { display: none !important; }
-
         body.is-admin .admin-only { display: flex !important; }
-
         .modal { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); z-index: 100; backdrop-filter: blur(8px); align-items: center; justify-content: center; }
-
         @media print { .no-print { display: none; } }
-
     </style>
-
 </head>
-
 <body class="overflow-hidden">
 
-
-
 <div class="p-6 w-full h-screen flex flex-col mx-auto gap-4">
-
     <header class="flex justify-between items-center bg-white p-5 rounded-2xl shadow-sm border border-slate-100 no-print">
-
         <div class="flex items-center gap-6">
-
             <div class="flex flex-col">
-
                 <h1 class="text-2xl font-black text-slate-900 tracking-tight leading-none uppercase">BREAK LİST <span class="text-blue-600">V1.0 Alpha</span></h1>
-
                 <span id="lockStatus" class="text-[10px] font-bold text-red-500 mt-1 uppercase tracking-widest">🔒 Kısıtlı Erişim</span>
-
             </div>
-
             <div class="flex bg-slate-100 p-1.5 rounded-xl admin-only">
-
                 <button onclick="switchView('editor')" id="btnEditor" class="px-5 py-2 rounded-lg text-xs font-bold text-slate-500">1. SHIFT HAZIRLA</button>
-
                 <button onclick="switchView('breaklist')" id="btnBreaklist" class="px-5 py-2 rounded-lg text-xs font-bold text-slate-500 ml-1 nav-active">2. MOLA LİSTESİ</button>
-
             </div>
-
         </div>
-
-
 
         <div class="flex gap-3 items-center">
-
             <div id="breaklistControls" class="flex gap-3">
-
                 <select id="daySelect" onchange="renderBreaklist()" class="border-2 border-slate-100 px-4 py-2 rounded-xl font-bold text-xs bg-white text-slate-700 outline-none">
-
                     <option value="0">PAZARTESİ</option><option value="1">SALI</option><option value="2">ÇARŞAMBA</option>
-
                     <option value="3">PERŞEMBE</option><option value="4">CUMA</option><option value="5">CUMARTESİ</option><option value="6">PAZAR</option>
-
                 </select>
-
                 <div class="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
-
                     <button onclick="setTab('opening')" id="tabOpen" class="px-5 py-1.5 rounded-lg bg-white shadow-sm font-bold text-xs text-blue-600">GÜNDÜZ</button>
-
                     <button onclick="setTab('closing')" id="tabClose" class="px-5 py-1.5 rounded-lg font-bold text-xs text-slate-400 ml-1">GECE</button>
-
                 </div>
-
             </div>
-
             <button id="loginBtn" onclick="promptLogin()" class="bg-blue-600 text-white px-4 py-2 rounded-xl text-xs font-black shadow-lg shadow-blue-200">GİRİŞ YAP</button>
-
             <button onclick="openSettings()" class="admin-only bg-slate-900 text-white w-10 h-10 flex items-center justify-center rounded-xl">⚙️</button>
-
         </div>
-
     </header>
 
-
-
     <main id="editorView" class="hidden bg-white rounded-2xl shadow-xl border border-slate-100 overflow-auto flex-1">
-
         <table class="w-full text-left border-collapse">
-
             <thead class="bg-slate-50 sticky top-0 z-10">
-
                 <tr><th class="p-5 sticky-col text-[11px] font-extrabold text-slate-400 uppercase">PERSONEL ADI</th><th class="p-5 text-center uppercase text-[11px] font-extrabold text-slate-400">Haftalık Vardiya Planı</th></tr>
-
             </thead>
-
             <tbody id="editorTableBody"></tbody>
-
         </table>
-
     </main>
-
-
 
     <main id="breaklistView" class="flex flex-col gap-5 flex-1 overflow-hidden">
-
         <div class="flex gap-5 flex-1 overflow-hidden">
-
             <aside class="w-64 bg-white rounded-2xl border border-slate-100 no-print shadow-sm overflow-y-auto" id="dynamicShiftFilters"></aside>
-
             <div id="scrollContainer" class="main-table-container bg-white border border-slate-100 shadow-sm">
-
                 <table class="border-collapse">
-
                     <thead class="sticky top-0 z-50" id="timeHeader"></thead>
-
                     <tbody id="breaklistTableBody"></tbody>
-
                 </table>
-
             </div>
-
         </div>
-
         <footer class="bg-white p-5 rounded-2xl border border-slate-100 shadow-xl flex flex-col gap-4 no-print">
-
             <div class="flex flex-wrap gap-3 items-center border-b border-slate-50 pb-4">
-
                 <div class="stats-badge bg-slate-900 !text-white px-4 py-2 rounded-xl font-bold flex items-center">TOPLAM: <span id="totalOnTable" class="text-lg ml-2">0</span></div>
-
                 <div id="areaStatsContainer" class="flex flex-wrap gap-3"></div>
-
             </div>
-
             <div id="areaButtons" class="admin-only flex gap-3 overflow-x-auto items-center min-h-[50px]"></div>
-
         </footer>
-
     </main>
 
-
-
     <div id="settingsModal" class="modal">
-
         <div class="bg-white p-8 rounded-[2rem] shadow-2xl w-[900px] max-h-[85vh] flex flex-col border">
-
             <div class="flex justify-between items-center mb-6">
-
                 <h2 class="text-2xl font-black text-slate-900 uppercase">Sistem Ayarları</h2>
-
                 <button onclick="closeSettings()" class="bg-slate-100 rounded-2xl w-10 h-10 font-bold hover:bg-red-50 hover:text-red-500 transition-colors">&times;</button>
-
             </div>
-
             <div class="flex gap-6 overflow-hidden">
-
                 <div class="flex-1 bg-slate-50 p-6 rounded-3xl border flex flex-col">
-
                     <h3 class="font-bold text-xs text-slate-400 mb-4 uppercase tracking-widest">Personel Yönetimi</h3>
-
                     <div class="flex gap-2 mb-4">
-
                         <input id="newStaffName" type="text" placeholder="İsim SOYİSİM" class="flex-1 px-4 py-3 rounded-xl border text-sm outline-none focus:border-blue-500">
-
-                        <button onclick="addNewStaff()" class="bg-blue-600 text-white px-5 py-3 rounded-xl font-bold hover:bg-blue-700">+</button>
-
+                        <button onclick="addNewStaff()" class="bg-blue-600 text-white px-4 py-3 rounded-xl font-bold hover:bg-blue-700" title="Ekle">+</button>
+                        <button onclick="document.getElementById('excelInput').click()" class="bg-emerald-600 text-white px-4 py-3 rounded-xl font-bold hover:bg-emerald-700" title="Excel'den Aktar">📂</button>
+                        <input type="file" id="excelInput" class="hidden" accept=".xlsx, .xls" onchange="importExcel(this)">
                     </div>
-
                     <div id="staffSettingsList" class="space-y-2 overflow-y-auto pr-2"></div>
-
                 </div>
-
                 <div class="flex-1 bg-slate-50 p-6 rounded-3xl border flex flex-col">
-
                     <h3 class="font-bold text-xs text-slate-400 mb-4 uppercase tracking-widest">Bölge Tanımları</h3>
-
                     <div class="flex gap-2 mb-4">
-
                         <input id="newAreaName" type="text" placeholder="Bölge Adı" class="flex-1 px-4 py-3 rounded-xl border text-sm outline-none">
-
                         <button onclick="addNewArea()" class="bg-blue-600 text-white px-5 py-3 rounded-xl font-bold hover:bg-blue-700">+</button>
-
                     </div>
-
                     <div id="areaSettingsList" class="space-y-2 overflow-y-auto pr-2"></div>
-
                 </div>
-
                 <div class="w-64 bg-slate-900 p-6 rounded-3xl text-white flex flex-col">
-
                     <h3 class="font-bold text-xs text-slate-400 mb-4 uppercase tracking-widest">Güvenlik</h3>
-
                     <input id="newPass" type="password" placeholder="Yeni Şifre" class="w-full px-4 py-3 rounded-xl text-sm mb-2 bg-slate-800 border-0 outline-none text-white">
-
                     <button onclick="changePassword()" class="bg-green-600 w-full py-3 rounded-xl font-bold text-[10px] mb-6 hover:bg-green-700">ŞİFREYİ GÜNCELLE</button>
-
                     <button onclick="clearDailyBreaks()" class="w-full py-3 bg-orange-600 text-white rounded-xl font-bold text-[10px] mb-2 hover:bg-orange-700 uppercase">Günü Temizle</button>
-
+                    <button onclick="resetSystem()" class="w-full py-3 bg-red-600 text-white rounded-xl font-bold text-[10px] mb-2 hover:bg-red-700 uppercase">Sistemi Sıfırla (İsimler Dahil)</button>
                     <button onclick="logout()" class="mt-auto w-full py-3 bg-red-500 rounded-xl font-bold text-[10px] hover:bg-red-600 uppercase">Oturumu Kapat</button>
-
                 </div>
-
             </div>
-
         </div>
-
     </div>
-
 </div>
 
-
-
 <script>
-
     let isAdmin = false;
-
     let adminPass = localStorage.getItem('barTeam_Pass') || 'mali007';
-
     let currentTab = 'opening';
-
     let currentPos = { row: 0, col: 0 };
-
     let totalCols = 0;
 
-
-
     const initialStaff = ["TÜLAY BALTACI", "HİLAL DOĞAN", "KÜBRA İNAÇ", "CEREN ESİRGEN", "REENA GURUNG", "GAYE SABIRLI", "BÜŞRA KEÇECİ", "SULTAN DALMIŞ", "SEHER BEYAZGÜL", "MELİKE ÜN", "SEREN GÜLTEKİN", "DEFNE YÜCEL", "HANİFE AKAR", "ROJDA NUR İLİŞ", "MELİKE BAYAN", "ÖMER YILMAZ", "AKIN KESKİN", "ONUR ARICIOĞLU", "NADEEM AKHTAR", "NOMAN TABASSAM", "KEMAL ÖZGÜR ÇAN", "HÜSEYİN LAÇİN", "LÜTFÜ KAŞKA", "MEHMET CAN POLAT", "MAHMUT FAKIOĞLU", "ŞEVGEL SAKLI", "MEHMET KIRIK", "VEYSEL AZAD SEÇKİN", "MEHMET KILIÇ", "MEHMET KARAKURT", "ŞAHİN ÖZEL", "BURAK YÜKÜM", "SERTAN ENDER", "OKAN DEMİRCİ", "ERDAL İZDEŞ", "EMİR ERYAZĞAN", "MEHMET EMİN AKBULUT", "BATUHAN ÇEVİK", "HALİT ARAS", "ALİ DURMAZ", "MUHAMMET ENES ÖZTÜRK", "MEHMET ALİ BİLİR", "DOĞUHAN ASLAN", "HASAN TUNCER", "CUMA ÖZBEK", "YUSUF AYDIN", "AHMET ESEN", "MUHAMMED UÇAR", "HÜSEYİN BATUHAN NERGİZ", "BURAK PİLEVNE", "YUSUF BEHZAT DOĞAN", "ÖZGÜR GÜLEN", "ÖMER CEM AKKERMAN", "EMİN REYHANİ"];
-
     let database = JSON.parse(localStorage.getItem('barTeam_DB')) || initialStaff.map(name => ({ name, shifts: ["","","","","","",""] }));
-
     let areas = JSON.parse(localStorage.getItem('barTeam_Areas')) || [{ name: 'BREAK', color: '#10b981' }, { name: 'JETON SAĞ', color: '#3b82f6' }, { name: 'MEGA VİP', color: '#8b5cf6' }, { name: 'MEGA', color: '#f59e0b' }];
-
     let breakStates = JSON.parse(localStorage.getItem('barTeam_Breaks')) || {};
-
     let activeStaffOnTable = JSON.parse(localStorage.getItem('barTeam_ActiveStaff')) || [];
 
-
-
-    // --- DRAG TO SCROLL ---
-
     const slider = document.getElementById('scrollContainer');
-
     let isDown = false;
-
     let startX, scrollLeft, startY, scrollTop;
 
-
-
     slider.addEventListener('mousedown', (e) => {
-
         isDown = true;
-
         startX = e.pageX - slider.offsetLeft;
-
         startY = e.pageY - slider.offsetTop;
-
         scrollLeft = slider.scrollLeft;
-
         scrollTop = slider.scrollTop;
-
     });
-
     slider.addEventListener('mouseleave', () => isDown = false);
-
     slider.addEventListener('mouseup', () => isDown = false);
-
     slider.addEventListener('mousemove', (e) => {
-
         if (!isDown) return;
-
         e.preventDefault();
-
         const x = e.pageX - slider.offsetLeft;
-
         const y = e.pageY - slider.offsetTop;
-
         const walkX = (x - startX) * 2; 
-
         const walkY = (y - startY) * 2;
-
         slider.scrollLeft = scrollLeft - walkX;
-
         slider.scrollTop = scrollTop - walkY;
-
     });
-
-
 
     window.addEventListener('keydown', (e) => {
-
         if (!isAdmin || document.activeElement.tagName === 'INPUT') return;
-
         const { row, col } = currentPos;
-
         const maxRow = activeStaffOnTable.length - 1;
-
         const maxCol = totalCols - 1;
-
-
-
         if (e.key === 'ArrowUp') { e.preventDefault(); if (row > 0) selectCellByClick(row - 1, col); } 
-
         else if (e.key === 'ArrowDown') { e.preventDefault(); if (row < maxRow) selectCellByClick(row + 1, col); } 
-
         else if (e.key === 'ArrowLeft') { e.preventDefault(); if (col > 0) selectCellByClick(row, col - 1); } 
-
         else if (e.key === 'ArrowRight') { e.preventDefault(); if (col < maxCol) selectCellByClick(row, col + 1); } 
-
     });
 
-
-
     function handleShiftKeyShortcut(e, pIdx, dIdx) {
-
         const key = e.key.toLowerCase();
-
         if (key === 'o') { e.preventDefault(); e.target.value = 'OFF'; updateShift(pIdx, dIdx, 'OFF'); }
-
         else if (key === 'v') { e.preventDefault(); e.target.value = 'VAC'; updateShift(pIdx, dIdx, 'VAC'); }
-
         else if (key === 'r') { e.preventDefault(); e.target.value = 'R'; updateShift(pIdx, dIdx, 'R'); }
-
     }
-
-
 
     function promptLogin() {
-
         const p = prompt("Yönetici Şifresi:");
-
         if(p === adminPass) {
-
             isAdmin = true;
-
             document.body.classList.add('is-admin');
-
             document.getElementById('loginBtn').style.display = 'none';
-
             document.getElementById('lockStatus').innerText = '🔓 YÖNETİCİ MODU';
-
             document.getElementById('lockStatus').classList.replace('text-red-500', 'text-green-500');
-
             renderBreaklist(); renderAreaButtons();
-
         } else if(p !== null) alert("Hatalı!");
-
     }
-
-
 
     function renderBreaklist() {
-
         const dayIdx = document.getElementById('daySelect').value;
-
         const filterContainer = document.getElementById('dynamicShiftFilters');
-
         const theader = document.getElementById('timeHeader');
-
         const tbody = document.getElementById('breaklistTableBody');
-
         
-
         filterContainer.innerHTML = '<div class="p-4 border-b bg-slate-50 font-bold text-[10px] text-slate-400 uppercase text-center tracking-widest">Shift Filtre</div>';
-
         const allowedShifts = currentTab === 'opening' ? [1,2,3,4,5,6,7] : [4,5,6,7,8,9];
-
         
-
         allowedShifts.forEach(sNum => {
-
             const match = database.filter(p => p.shifts[dayIdx] == sNum);
-
             if(match.length > 0) {
-
                 filterContainer.innerHTML += `<button onclick="this.nextElementSibling.classList.toggle('hidden')" class="w-full text-left p-4 border-b text-[11px] font-bold bg-white hover:bg-slate-50 flex justify-between">SHIFT ${sNum} <span>${match.length}</span></button><div class="hidden bg-slate-50">${match.map(p => `<div class="p-3 pl-8 text-xs border-b cursor-pointer hover:text-blue-600 font-semibold" onclick="addToTable('${p.name}')">${p.name}</div>`).join('')}</div>`;
-
             }
-
         });
-
-
 
         let startTime = currentTab === 'opening' ? 8*60 : 16*60;
-
         let endTime = currentTab === 'opening' ? 16*60 : (24+7)*60 + 40;
-
         let headerHtml = `<tr><th class="sticky-col p-4 text-[11px] font-bold text-slate-400 bg-white border-b uppercase">PERSONEL</th>`;
-
         totalCols = 0;
-
         for(let t = startTime; t <= endTime; t += 20) {
-
             headerHtml += `<th class="time-header-cell border-b text-center">${Math.floor((t/60)%24).toString().padStart(2,'0')}:${(t%60).toString().padStart(2,'0')}</th>`;
-
             totalCols++;
-
         }
-
         theader.innerHTML = headerHtml + `</tr>`;
 
-
-
         tbody.innerHTML = '';
-
         activeStaffOnTable.forEach((name, rIdx) => {
-
             let rowHtml = `<td class="sticky-col px-4 py-3 text-[12px] font-bold bg-white border-b flex justify-between items-center text-slate-700">${name} ${isAdmin ? `<button onclick="removeFromTable(${rIdx})" class="text-red-300 hover:text-red-500 text-lg">×</button>` : ''}</td>`;
-
             for(let cIdx = 0; cIdx < totalCols; cIdx++) {
-
                 const key = `${dayIdx}_${name}_${currentTab}_${cIdx}`;
-
                 const data = breakStates[key] || { label: '', color: '#ffffff' };
-
                 rowHtml += `<td class="p-1 border-b border-slate-50"><div id="cell-${rIdx}-${cIdx}" class="cell-unit ${isAdmin && currentPos.row===rIdx && currentPos.col===cIdx ? 'cell-selected':''}" style="background-color:${data.color}; color:${getContrast(data.color)}" onclick="selectCellByClick(${rIdx}, ${cIdx})">${data.label}</div></td>`;
-
             }
-
             tbody.appendChild(Object.assign(document.createElement('tr'), { innerHTML: rowHtml }));
-
         });
-
         updateStats();
-
     }
 
-
-
     function selectCellByClick(r, c) { if(isAdmin) { currentPos = { row: r, col: c }; renderBreaklist(); } }
-
     function applyArea(label, color) { if(!isAdmin) return; const dayIdx = document.getElementById('daySelect').value; const name = activeStaffOnTable[currentPos.row]; const key = `${dayIdx}_${name}_${currentTab}_${currentPos.col}`; breakStates[key] = { label, color }; localStorage.setItem('barTeam_Breaks', JSON.stringify(breakStates)); renderBreaklist(); }
-
+    
     function renderEditor() {
-
         const tbody = document.getElementById('editorTableBody');
-
         tbody.innerHTML = '';
-
         database.forEach((p, pIdx) => {
-
             const tr = document.createElement('tr');
-
             tr.innerHTML = `<td class="p-4 border-b sticky-col text-[12px] font-bold bg-white">${p.name}</td><td class="p-1 border-b flex gap-2 justify-center py-3">${p.shifts.map((s, dIdx) => `<input type="text" value="${s}" onkeydown="handleShiftKeyShortcut(event, ${pIdx}, ${dIdx})" onchange="updateShift(${pIdx}, ${dIdx}, this.value)" class="w-12 h-10 border text-center rounded-lg font-black uppercase outline-none focus:border-blue-500">`).join('')}</td>`;
-
             tbody.appendChild(tr);
-
         });
-
     }
 
     function updateShift(p, d, val) { database[p].shifts[d] = val.toUpperCase(); localStorage.setItem('barTeam_DB', JSON.stringify(database)); }
-
     function addToTable(name) { if(!activeStaffOnTable.includes(name)) { activeStaffOnTable.push(name); localStorage.setItem('barTeam_ActiveStaff', JSON.stringify(activeStaffOnTable)); renderBreaklist(); } }
-
     function removeFromTable(idx) { activeStaffOnTable.splice(idx, 1); localStorage.setItem('barTeam_ActiveStaff', JSON.stringify(activeStaffOnTable)); renderBreaklist(); }
-
     function setTab(t) { currentTab = t; renderBreaklist(); }
-
-    function switchView(view) { document.getElementById('editorView').classList.toggle('hidden', view !== 'editor'); document.getElementById('breaklistView').classList.toggle('hidden', view !== 'breaklist'); if(view==='editor') renderEditor(); else renderBreaklist(); document.getElementById('btnEditor').className = `px-5 py-2 rounded-lg text-xs font-bold ${view === 'editor' ? 'nav-active' : 'text-slate-500'}`; document.getElementById('btnBreaklist').className = `px-5 py-2 rounded-lg text-xs font-bold ${view === 'breaklist' ? 'nav-active' : 'text-slate-500'}`; }
-
+    function switchView(view) { document.getElementById('editorView').classList.toggle('hidden', view !== 'editor'); document.getElementById('breaklistView').classList.toggle('hidden', view !== 'breaklist'); if(view==='editor') renderEditor(); else renderBreaklist(); }
+    
     function openSettings() { if(isAdmin) { document.getElementById('settingsModal').style.display = 'flex'; renderStaffSettings(); renderAreaSettings(); } }
-
     function closeSettings() { document.getElementById('settingsModal').style.display = 'none'; }
-
     function renderStaffSettings() { const list = document.getElementById('staffSettingsList'); list.innerHTML = database.map((p) => `<div class="flex justify-between bg-white px-4 py-3 rounded-xl border border-slate-100 items-center mb-1"><span class="font-bold text-slate-700 text-xs">${p.name}</span><button onclick="removeStaff('${p.name}')" class="text-red-400 font-bold px-2 hover:text-red-600">SİL</button></div>`).join(''); }
-
     function addNewStaff() { const input = document.getElementById('newStaffName'); if(!input.value) return; database.push({ name: input.value.toUpperCase(), shifts: ["","","","","","",""] }); localStorage.setItem('barTeam_DB', JSON.stringify(database)); input.value = ''; renderStaffSettings(); }
-
     function removeStaff(name) { if(confirm("Silinsin mi?")) { database = database.filter(p => p.name !== name); activeStaffOnTable = activeStaffOnTable.filter(n => n !== name); localStorage.setItem('barTeam_DB', JSON.stringify(database)); renderStaffSettings(); renderBreaklist(); } }
-
+    
     function renderAreaSettings() { const list = document.getElementById('areaSettingsList'); list.innerHTML = areas.map((a, i) => `<div class="flex gap-2 bg-white p-2 rounded-xl border border-slate-100 items-center mb-1"><input type="color" value="${a.color}" onchange="areas[${i}].color=this.value; localStorage.setItem('barTeam_Areas', JSON.stringify(areas)); renderAreaButtons();" class="w-8 h-8 rounded border-0 bg-transparent"><input type="text" value="${a.name}" onchange="areas[${i}].name=this.value.toUpperCase(); localStorage.setItem('barTeam_Areas', JSON.stringify(areas)); renderAreaButtons();" class="flex-1 text-xs font-bold outline-none"><button onclick="areas.splice(${i},1); localStorage.setItem('barTeam_Areas', JSON.stringify(areas)); renderAreaSettings(); renderAreaButtons();" class="text-red-400 font-black px-2">×</button></div>`).join(''); }
-
     function addNewArea() { const input = document.getElementById('newAreaName'); if(!input.value) return; areas.push({ name: input.value.toUpperCase(), color: '#3b82f6' }); localStorage.setItem('barTeam_Areas', JSON.stringify(areas)); input.value = ''; renderAreaSettings(); renderAreaButtons(); }
-
+    
     function updateStats() { document.getElementById('totalOnTable').innerText = activeStaffOnTable.length; const container = document.getElementById('areaStatsContainer'); const dayIdx = document.getElementById('daySelect').value; const counts = {}; areas.forEach(a => counts[a.name] = 0); activeStaffOnTable.forEach(name => { const key = `${dayIdx}_${name}_${currentTab}_${currentPos.col}`; const data = breakStates[key]; if(data && counts.hasOwnProperty(data.label)) counts[data.label]++; }); container.innerHTML = areas.map(a => `<div class="stats-badge border border-slate-100 px-3 py-1 rounded-xl text-[11px] font-bold" style="color: ${a.color}"><span class="opacity-70">${a.name}:</span> <span class="text-slate-900 ml-1">${counts[a.name]}</span></div>`).join(''); }
-
     function renderAreaButtons() { const container = document.getElementById('areaButtons'); container.innerHTML = areas.map(a => `<button onclick="applyArea('${a.name}', '${a.color}')" class="px-6 py-3 rounded-xl text-white font-bold text-[10px] shadow-sm uppercase tracking-wider" style="background:${a.color}">${a.name}</button>`).join('') + `<button onclick="applyArea('', '#ffffff')" class="px-6 py-3 rounded-xl bg-slate-100 text-slate-400 font-bold text-[10px] ml-auto border uppercase">Temizle</button>`; }
-
+    
     function changePassword() { const np = document.getElementById('newPass').value; if(np.length < 3) return alert("Şifre çok kısa!"); adminPass = np; localStorage.setItem('barTeam_Pass', np); alert("Şifre Güncellendi!"); }
-
     function logout() { isAdmin = false; location.reload(); }
-
     function getContrast(hex) { if(!hex || hex === '#ffffff') return '#475569'; const r = parseInt(hex.substr(1,2),16), g = parseInt(hex.substr(3,2),16), b = parseInt(hex.substr(5,2),16); return ((r*299)+(g*587)+(b*114))/1000 >= 128 ? '#1e293b' : 'white'; }
-
+    
     function clearDailyBreaks() {
-
         const dayIdx = document.getElementById('daySelect').value;
-
         const days = ["PAZARTESİ", "SALI", "ÇARŞAMBA", "PERŞEMBE", "CUMA", "CUMARTESİ", "PAZAR"];
-
         if (confirm(`${days[dayIdx]} gününe ait TÜM mola verileri silinecek. Emin misiniz?`)) {
-
             Object.keys(breakStates).forEach(key => { if (key.startsWith(`${dayIdx}_`)) delete breakStates[key]; });
-
             localStorage.setItem('barTeam_Breaks', JSON.stringify(breakStates));
-
             renderBreaklist();
-
             alert("Seçili günün mola tablosu temizlendi.");
-
         }
+    }
 
+    // --- SİSTEMİ SIFIRLA (İSİMLER VE VARDİYALAR) ---
+    function resetSystem() {
+        if (confirm("DİKKAT! Tüm personeller ve vardiya planları tamamen silinecek. Bu işlem geri alınamaz. Emin misiniz?")) {
+            database = [];
+            activeStaffOnTable = [];
+            breakStates = {};
+            localStorage.setItem('barTeam_DB', JSON.stringify(database));
+            localStorage.setItem('barTeam_ActiveStaff', JSON.stringify(activeStaffOnTable));
+            localStorage.setItem('barTeam_Breaks', JSON.stringify(breakStates));
+            
+            renderStaffSettings();
+            if (!document.getElementById('editorView').classList.contains('hidden')) renderEditor();
+            renderBreaklist();
+            alert("Sistem tamamen sıfırlandı.");
+        }
+    }
+
+    // --- EXCEL'DEN İÇERİ AKTAR ---
+    function importExcel(input) {
+        const file = input.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+            
+            const newStaff = [];
+            json.forEach((row, idx) => {
+                if (idx === 0 || !row[0]) return; // Başlık veya boş satırı atla
+                newStaff.push({
+                    name: String(row[0]).toUpperCase().trim(),
+                    shifts: [
+                        String(row[1] || ""), String(row[2] || ""), String(row[3] || ""),
+                        String(row[4] || ""), String(row[5] || ""), String(row[6] || ""), String(row[7] || "")
+                    ]
+                });
+            });
+
+            if(confirm(`${newStaff.length} personel aktarılsın mı? (Mevcut liste korunur)`)) {
+                database = [...database, ...newStaff];
+                localStorage.setItem('barTeam_DB', JSON.stringify(database));
+                renderStaffSettings();
+                if (!document.getElementById('editorView').classList.contains('hidden')) renderEditor();
+                alert("Aktarım başarılı!");
+            }
+            input.value = '';
+        };
+        reader.readAsArrayBuffer(file);
     }
 
     window.onload = () => { renderBreaklist(); renderAreaButtons(); };
-
 </script>
-
 </body>
-
 </html>
